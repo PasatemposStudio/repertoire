@@ -75,9 +75,15 @@
     </header>
     <div id="songWrap">
       <div id="empty" class="welcome">
-        <img class="welcome-logo" src="icon.png" alt=""><h2>Repertoire</h2>
-        <p>Başlamak için şarkılarının bulunduğu klasörü ekle.<br>Google Drive klasörünü de seçebilirsin; değişiklikler otomatik senkronlanır.</p>
-        <button class="primary" id="btnAddFolderEmpty">Klasör ekle</button>
+        <img class="welcome-logo" src="icon.png" alt="">
+        <h2>Repertoire</h2>
+        <div class="by">by Fatih Akıncı</div>
+        <div class="setup-card">
+          <div class="setup-step"><span>1</span><div id="setupStep1">Şarkılarının bulunduğu klasörü seç. Google Drive for Desktop klasörünü seçersen değişiklikler otomatik senkronlanır.</div></div>
+          <div class="setup-step" id="setupStep2Row" hidden><span>2</span><div>Dil klasörlerinin bulunduğu ana şarkı klasörünü seç. Şarkılar telefona kaydedilir, internet olmadan da açılır.</div></div>
+          <button class="primary" id="btnAddFolderEmpty">Klasör ekle</button>
+          <div class="setup-status" id="setupStatus"></div>
+        </div>
       </div>
       <div id="home" hidden></div>
       <article id="song" hidden></article>

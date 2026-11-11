@@ -31,6 +31,7 @@
   let scrolling = false, scrollAcc = 0, lastTs = 0;
   let pop = { chord: null, shapes: [], idx: 0 };
   let autoOpened = false;
+  let lastStatus = '';
 
   // ---------- yardımcılar ----------
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -240,8 +241,10 @@
     $('#home').innerHTML = `
       <div class="h-head">
         <img src="icon.png" alt="">
-        <div><h1>Repertoire</h1><div class="h-stats">${library.length} şarkı · ${artists.size} sanatçı · ${langList.length} dil</div></div>
+        <div><h1>Repertoire</h1><div class="by">by Fatih Akıncı</div><div class="h-stats">${library.length} şarkı · ${artists.size} sanatçı · ${langList.length} dil</div></div>
       </div>
+      <div class="h-status" id="homeStatus">${esc(WEB ? lastStatus : '')}</div>
+      ${!library.length ? `<div class="h-empty">${WEB ? 'Şarkılar Drive\'dan indiriliyor… İlk senkron birkaç dakika sürebilir; indikçe burada görünecekler.' : 'Seçili klasörde şarkı bulunamadı. Ayarlar\'dan klasörünü kontrol et.'}</div>` : ''}
       <div class="h-search"><input id="homeSearch" type="search" placeholder="Şarkı veya sanatçı ara…" autocomplete="off"></div>
       <div id="homeResults"></div>
       <div id="homeMain">
@@ -633,7 +636,12 @@
       save(); renderList();
     };
     $('#btnRescan').onclick = () => WEB ? S.syncNow(settings.folders) : scan().then(() => toast('Yenilendi'));
-    if (S.onStatus) S.onStatus(t => { $('#syncStatus').textContent = t; });
+    if (S.onStatus) S.onStatus(t => {
+      lastStatus = t;
+      $('#syncStatus').textContent = t;
+      const hs = $('#homeStatus'); if (hs) hs.textContent = t;
+      $('#setupStatus').textContent = t;
+    });
     $('#syncStatus').onclick = () => { if (WEB) S.isConnected() ? S.syncNow(settings.folders) : S.connect(); };
     $('#scrim').onclick = () => setDrawer(false);
     $('#btnHome').onclick = goHome;
@@ -815,8 +823,9 @@
     applyLook();
     bind();
     if (WEB) {
-      $('#empty p').innerHTML = 'Başlamak için Google Drive\'daki şarkı klasörünü seç.<br>Şarkılar telefona da kaydedilir; internet olmadan da açılır.';
-      $('#btnAddFolderEmpty').textContent = 'Drive klasörü seç';
+      $('#setupStep1').innerHTML = S.isConnected() ? 'Google hesabın bağlı ✓' : 'Google hesabınla giriş yap (Drive erişimi için, tek seferlik).';
+      $('#setupStep2Row').hidden = false;
+      $('#btnAddFolderEmpty').textContent = S.isConnected() ? 'Drive klasörünü seç' : 'Google ile bağlan';
     }
     await scan();
 

@@ -172,6 +172,7 @@
             done++;
             if (done % 10 === 0 || !toFetch.length) status(`İndiriliyor ${done}/${done + toFetch.length}`);
             if (results.length >= 50) { await putFiles(results.splice(0)); }
+            if (done % 200 === 0) emit('changed'); // şarkılar indikçe listede görünsün
           }
         };
         await Promise.all(Array.from({ length: 6 }, worker));
