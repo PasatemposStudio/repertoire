@@ -49,6 +49,7 @@
   <main id="main">
     <header id="toolbar">
       <button class="icon" id="btnSidebar" title="Kütüphaneyi gizle/göster (Ctrl+B)">☰</button>
+      <button class="icon" id="btnHome" title="Ana sayfa"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h5v-6h4v6h5V9.5"/></svg></button>
       <div class="group" title="Transpoze ([ ve ] tuşları)">
         <span class="glabel">Ton</span>
         <button id="trDown">−</button><span id="trVal" class="val">0</span><button id="trUp">+</button>
@@ -78,6 +79,7 @@
         <p>Başlamak için şarkılarının bulunduğu klasörü ekle.<br>Google Drive klasörünü de seçebilirsin; değişiklikler otomatik senkronlanır.</p>
         <button class="primary" id="btnAddFolderEmpty">Klasör ekle</button>
       </div>
+      <div id="home" hidden></div>
       <article id="song" hidden></article>
     </div>
   </main>

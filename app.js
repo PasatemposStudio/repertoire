@@ -18,7 +18,7 @@
     fonts: { lyric: 'Segoe UI', chord: 'Segoe UI', title: 'Georgia', ui: 'Segoe UI' },
     size: 20, chordScale: 0.9, titleScale: 1.8, lineHeight: 1.2, lineGap: 0.35, chordBold: true, chordItalic: false,
     notation: 'auto', latin: false, chordPos: 'above', columns: 1, showDiagrams: false, expandChorus: false,
-    showMeta: true, sidebarWidth: 300, sidebarOpen: true, sort: 'lang-artist', scrollSpeed: 30, songState: {}, lastSong: null, langFilter: '', artistFilter: '', groupState: {},
+    showMeta: true, sidebarWidth: 300, sidebarOpen: true, sort: 'lang-artist', scrollSpeed: 30, songState: {}, lastSong: null, recent: [], langFilter: '', artistFilter: '', groupState: {},
   };
   const FONT_SUGGEST = ['Segoe UI', 'Arial', 'Calibri', 'Cambria', 'Georgia', 'Verdana', 'Tahoma', 'Trebuchet MS', 'Times New Roman', 'Palatino Linotype', 'Bahnschrift', 'Consolas', 'Courier New', 'Candara', 'Constantia', 'Corbel', 'Franklin Gothic Medium', 'Gill Sans MT', 'Lucida Sans Unicode', 'Segoe Print', 'Comic Sans MS', 'Helvetica', 'Inter', 'Roboto', 'Open Sans'];
 
@@ -30,6 +30,7 @@
   let editingPath = null;
   let scrolling = false, scrollAcc = 0, lastTs = 0;
   let pop = { chord: null, shapes: [], idx: 0 };
+  let autoOpened = false;
 
   // ---------- yardımcılar ----------
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -83,13 +84,14 @@
     });
     fillFilters();
     renderList();
-    if (!current && settings.lastSong) {
+    if (false) {
       const s = library.find(x => x.path === settings.lastSong);
       if (s) openSong(s, true);
     } else if (current) {
       const s = library.find(x => x.path === current.path);
       if (s && s.mtime !== current.mtime && !editingPath) { current = s; render(); }
     }
+    autoOpened = true;
     showEmpty(!current);
   }
 
@@ -200,12 +202,78 @@
     if (changed) renderList();
   }
 
-  function showEmpty(on) { $('#empty').hidden = !on; $('#song').hidden = on; }
+  // Şarkı açık değilken: klasör yoksa ilk kurulum ekranı, varsa ana sayfa
+  function showEmpty(on) {
+    const setup = on && !settings.folders.length;
+    const home = on && !setup;
+    $('#empty').hidden = !setup;
+    $('#home').hidden = !home;
+    $('#song').hidden = on;
+    document.body.classList.toggle('at-home', on);
+    if (home) renderHome();
+  }
+
+  function goHome() {
+    current = null;
+    stopScroll();
+    $('#chordPop').hidden = true;
+    document.querySelectorAll('.item.active').forEach(e => e.classList.remove('active'));
+    document.title = 'Repertoire';
+    if (isMobile()) setDrawer(false);
+    showEmpty(true);
+    $('#songWrap').scrollTop = 0;
+  }
+
+  function songRow(s) {
+    const sub = [s.artist, langOf(s), s.key].filter(Boolean).join(' · ');
+    return `<div class="h-song" data-path="${esc(s.path)}"><span class="t">${esc(s.title)}</span>${sub ? `<span class="sub">${esc(sub)}</span>` : ''}</div>`;
+  }
+
+  function renderHome() {
+    const byPath = new Map(library.map(s => [s.path, s]));
+    const recent = (settings.recent || []).map(p => byPath.get(p)).filter(Boolean);
+    const last = recent[0];
+    const langs = {};
+    library.forEach(s => { const l = langOf(s); langs[l] = (langs[l] || 0) + 1; });
+    const langList = Object.entries(langs).sort((a, b) => b[1] - a[1] || coll.compare(a[0], b[0]));
+    const artists = new Set(library.map(s => fold(artistOf(s))));
+    $('#home').innerHTML = `
+      <div class="h-head">
+        <img src="icon.png" alt="">
+        <div><h1>Repertoire</h1><div class="h-stats">${library.length} şarkı · ${artists.size} sanatçı · ${langList.length} dil</div></div>
+      </div>
+      <div class="h-search"><input id="homeSearch" type="search" placeholder="Şarkı veya sanatçı ara…" autocomplete="off"></div>
+      <div id="homeResults"></div>
+      <div id="homeMain">
+        ${last ? `<div class="h-sec">Kaldığın yer</div>
+          <div class="h-continue" data-path="${esc(last.path)}"><div><div class="t">${esc(last.title)}</div><div class="sub">${esc([last.artist, langOf(last)].filter(Boolean).join(' · '))}</div></div><span class="go">›</span></div>` : ''}
+        ${recent.length > 1 ? `<div class="h-sec">Son açılanlar</div><div class="h-list">${recent.slice(1, 7).map(songRow).join('')}</div>` : ''}
+        <div class="h-sec">Diller</div>
+        <div class="h-langs">${langList.map(([l, n]) => `<button class="h-lang" data-lang="${esc(l)}"><span>${esc(l)}</span><b>${n}</b></button>`).join('')}</div>
+        <div class="h-actions">
+          <button id="homeRandom">🎲 Rastgele şarkı</button>
+          <button id="homeLibrary">☰ Tüm kütüphane</button>
+        </div>
+      </div>`;
+  }
+
+  function homeSearch(q) {
+    const f = fold(q.trim());
+    $('#homeMain').hidden = !!f;
+    if (!f) { $('#homeResults').innerHTML = ''; return; }
+    const words = f.split(/\s+/);
+    const res = library.filter(s => words.every(w => s.fTitle.includes(w))).sort((a, b) => coll.compare(a.title, b.title));
+    $('#homeResults').innerHTML = res.length
+      ? `<div class="h-sec">${res.length} sonuç</div><div class="h-list">${res.slice(0, 60).map(songRow).join('')}</div>`
+      : '<div class="hint" style="padding:16px 4px">Sonuç yok.</div>';
+  }
 
   function openSong(s, keepScroll) {
     current = s;
     if (isMobile()) setDrawer(false);
-    save({ lastSong: s.path });
+    save({ lastSong: s.path, recent: [s.path, ...(settings.recent || []).filter(p => p !== s.path)].slice(0, 12) });
+    $('#home').hidden = true;
+    document.body.classList.remove('at-home');
     stopScroll();
     render();
     if (!keepScroll) $('#songWrap').scrollTop = 0;
@@ -568,6 +636,24 @@
     if (S.onStatus) S.onStatus(t => { $('#syncStatus').textContent = t; });
     $('#syncStatus').onclick = () => { if (WEB) S.isConnected() ? S.syncNow(settings.folders) : S.connect(); };
     $('#scrim').onclick = () => setDrawer(false);
+    $('#btnHome').onclick = goHome;
+    document.querySelector('.brand').onclick = goHome;
+    $('#home').addEventListener('input', e => { if (e.target.id === 'homeSearch') homeSearch(e.target.value); });
+    $('#home').addEventListener('click', e => {
+      const row = e.target.closest('[data-path]');
+      if (row) { const s = library.find(x => x.path === row.dataset.path); if (s) openSong(s); return; }
+      const lb = e.target.closest('[data-lang]');
+      if (lb) {
+        settings.langFilter = lb.dataset.lang; settings.artistFilter = ''; save(); fillFilters(); renderList();
+        if (isMobile()) setDrawer(true); else if (!settings.sidebarOpen) { save({ sidebarOpen: true }); applyLook(); }
+        return;
+      }
+      if (e.target.closest('#homeRandom') && library.length) openSong(library[Math.floor(Math.random() * library.length)]);
+      if (e.target.closest('#homeLibrary')) {
+        settings.langFilter = ''; settings.artistFilter = ''; save(); fillFilters(); renderList();
+        if (isMobile()) setDrawer(true); else if (!settings.sidebarOpen) { save({ sidebarOpen: true }); applyLook(); }
+      }
+    });
     $('#btnNew').onclick = newSong;
     $('#btnAddFolderEmpty').onclick = addFolder;
 
@@ -733,7 +819,7 @@
       $('#btnAddFolderEmpty').textContent = 'Drive klasörü seç';
     }
     await scan();
-    if (isMobile() && !current) setDrawer(true);
+
     if (WEB && S.consumePendingPick()) addFolder();
     else if (WEB && settings.folders.length && S.isConnected()) S.syncNow(settings.folders);
   }
